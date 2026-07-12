@@ -4,13 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Deux outils Tkinter indépendants (aucune dépendance externe, stdlib Python
-uniquement — y compris pour les appels réseau, via `urllib`) pour partager
-des mods Civilization VI entre un ami en version **Steam** et un ami en
-version **Epic Games**. Flux principal : upload automatique vers
-[Pixeldrain](https://pixeldrain.com) et transmission d'un simple lien ; en
-secours, transfert manuel via fichier JSON / presse-papiers / archive `.zip`
-que les utilisateurs s'échangent eux-mêmes (mail, Discord, clé USB...).
+**Civ6 Mod Bridge** (anciennement "Civ 6 Mod Manager") — deux outils Tkinter
+indépendants (aucune dépendance externe, stdlib Python uniquement — y compris
+pour les appels réseau, via `urllib`) pour partager des mods Civilization VI
+entre un ami en version **Steam** et un ami en version **Epic Games**. Flux
+principal : upload automatique vers [Pixeldrain](https://pixeldrain.com) et
+transmission d'un simple lien ; en secours, transfert manuel via fichier
+JSON / presse-papiers / archive `.zip` que les utilisateurs s'échangent
+eux-mêmes (mail, Discord, clé USB...).
+
+### Roadmap (décidée, pas encore commencée)
+
+Le projet était initialement pensé pour deux utilisateurs précis (l'auteur
+et un ami). Objectif désormais : le rendre facilement partageable à
+n'importe qui rencontrant le même problème Steam/Epic. Décisions prises :
+1. **Fusionner** `steam_lister/` et `epic_mod_manager/` en une seule
+   application (écran de démarrage pour choisir son rôle/plateforme).
+2. **Réécrire l'interface avec PySide6** (Qt) à cette occasion — préféré à
+   une UI web locale pour rester 100% Python et plus simple à maintenir en
+   solo. Fait dans la foulée de la fusion plutôt qu'avant, pour éviter de
+   fusionner en Tkinter puis de tout refaire en Qt.
+3. **Bilingue FR/EN** dès la réécriture (le public Civ 6 est majoritairement
+   anglophone).
+4. Licence **MIT** déjà en place (voir `LICENSE`).
+
+La logique métier actuelle (`mod_scanner.py`, `pixeldrain_client.py`,
+`steam_locator.py`, `config.py`) est indépendante de Tkinter et sera
+largement réutilisable telle quelle dans la réécriture — seule la couche
+UI change entièrement.
 
 - `steam_lister/` — tourne côté Steam, scanne le Workshop, upload une
   archive vers Pixeldrain et affiche le lien (ou produit une liste/archive

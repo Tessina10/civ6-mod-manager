@@ -1,8 +1,12 @@
-# Civ 6 Mod Manager
+# Civ6 Mod Bridge
 
 Deux petits outils complémentaires pour partager et installer des mods
 Civilization VI entre un ami en version **Steam** et un ami en version
 **Epic Games**.
+
+> Anciennement "Civ 6 Mod Manager" — projet en cours de transformation pour
+> une audience plus large (fusion des deux outils, interface modernisée,
+> bilingue FR/EN). Voir `CLAUDE.md` pour l'état d'avancement.
 
 ## [steam_lister/](steam_lister/) — "Lister mes mods Civilization VI (Steam)"
 
