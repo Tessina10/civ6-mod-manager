@@ -1,6 +1,5 @@
-# Config d'outils de dev partagée pour les deux mini-projets (steam_lister/,
-# epic_mod_manager/). Ce fichier ne fait pas de ce dépôt un package Python
-# installable : chaque outil reste un script autonome (voir CLAUDE.md).
+# Config d'outils de dev pour app/. Ce fichier ne fait pas de ce dépôt un
+# package Python installable (voir CLAUDE.md).
 
 [tool.ruff]
 line-length = 120

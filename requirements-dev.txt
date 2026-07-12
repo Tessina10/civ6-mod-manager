@@ -1,6 +1,6 @@
-# Dépendances de dev uniquement (aucune dépendance runtime : les deux outils
-# restent 100% stdlib, y compris pour les appels réseau via urllib).
-# Installation : pip install -r requirements-dev.txt
+# Dépendances de dev uniquement. La dépendance runtime (PySide6) est dans
+# requirements.txt à la racine.
+# Installation : pip install -r requirements.txt -r requirements-dev.txt
 pyinstaller
 ruff
 pytest

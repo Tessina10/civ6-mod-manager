@@ -4,70 +4,48 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-**Civ6 Mod Bridge** (anciennement "Civ 6 Mod Manager") — deux outils Tkinter
-indépendants (aucune dépendance externe, stdlib Python uniquement — y compris
-pour les appels réseau, via `urllib`) pour partager des mods Civilization VI
-entre un ami en version **Steam** et un ami en version **Epic Games**. Flux
-principal : upload automatique vers [Pixeldrain](https://pixeldrain.com) et
-transmission d'un simple lien ; en secours, transfert manuel via fichier
-JSON / presse-papiers / archive `.zip` que les utilisateurs s'échangent
-eux-mêmes (mail, Discord, clé USB...).
+**Civ6 Mod Bridge** (anciennement "Civ 6 Mod Manager", à l'origine deux
+outils Tkinter séparés) — une application PySide6 unique, bilingue FR/EN,
+pour partager des mods Civilization VI entre un ami en version **Steam** et
+un ami en version **Epic Games** (ou toute autre). Flux principal : upload
+automatique vers [Pixeldrain](https://pixeldrain.com) et transmission d'un
+simple lien ; en secours, transfert manuel via fichier JSON / presse-papiers
+/ archive `.zip` que les utilisateurs s'échangent eux-mêmes.
 
-### Roadmap (décidée, pas encore commencée)
-
-Le projet était initialement pensé pour deux utilisateurs précis (l'auteur
-et un ami). Objectif désormais : le rendre facilement partageable à
-n'importe qui rencontrant le même problème Steam/Epic. Décisions prises :
-1. **Fusionner** `steam_lister/` et `epic_mod_manager/` en une seule
-   application (écran de démarrage pour choisir son rôle/plateforme).
-2. **Réécrire l'interface avec PySide6** (Qt) à cette occasion — préféré à
-   une UI web locale pour rester 100% Python et plus simple à maintenir en
-   solo. Fait dans la foulée de la fusion plutôt qu'avant, pour éviter de
-   fusionner en Tkinter puis de tout refaire en Qt.
-3. **Bilingue FR/EN** dès la réécriture (le public Civ 6 est majoritairement
-   anglophone).
-4. Licence **MIT** déjà en place (voir `LICENSE`).
-
-La logique métier actuelle (`mod_scanner.py`, `pixeldrain_client.py`,
-`steam_locator.py`, `config.py`) est indépendante de Tkinter et sera
-largement réutilisable telle quelle dans la réécriture — seule la couche
-UI change entièrement.
-
-- `steam_lister/` — tourne côté Steam, scanne le Workshop, upload une
-  archive vers Pixeldrain et affiche le lien (ou produit une liste/archive
-  locale à envoyer soi-même).
-- `epic_mod_manager/` — tourne sur n'importe quelle installation, scanne le
-  dossier Mods local, télécharge+installe depuis un lien reçu (ou importe
-  une archive locale).
-
-Voir `README.md` (racine) et le README de chaque sous-dossier pour le détail
-utilisateur.
+Historique : le projet visait initialement deux utilisateurs précis
+(l'auteur et un ami). Il a été renommé et fusionné en une seule application
+pour être facilement partageable à n'importe qui rencontrant le même
+problème Steam/Epic (fusion des deux anciens outils, réécriture Tkinter →
+PySide6, bilingue). Licence MIT (voir `LICENSE`).
 
 ## Commandes
 
-Chaque outil est un mini-projet Python autonome, à lancer depuis son propre
-dossier (pas de venv/requirements pour l'exécution — stdlib only) :
+Tout le code vit dans `app/` (pas un package installable — voir Architecture) :
 
 ```
-cd steam_lister && python main.py
-cd epic_mod_manager && python main.py
+pip install -r requirements.txt -r requirements-dev.txt   # PySide6 + outils de dev
+cd app && python main.py                                  # lancer l'application
 ```
 
-Build de l'exécutable Windows (PyInstaller, déjà configuré via le `.spec` de
-chaque dossier) :
+Build de l'exécutable Windows (PyInstaller) :
 
 ```
-cd steam_lister && pyinstaller Civ6ModLister.spec
-cd epic_mod_manager && pyinstaller Civ6ModScanner.spec
+cd app && pyinstaller Civ6ModBridge.spec
 ```
 
-Les binaires sont produits dans `dist/` de chaque dossier.
+Le binaire est produit dans `app/dist/`. PySide6 est bien supporté
+nativement par PyInstaller (hooks fournis par PySide6 lui-même) — pas de
+`hiddenimports` nécessaires. L'exécutable est nettement plus volumineux
+qu'avec Tkinter (~48 Mo, bibliothèque Qt complète embarquée) : normal, pas
+une régression. Au lancement, un build PyInstaller onefile démarre
+généralement **deux process** `Civ6ModBridge.exe` (le bootloader qui
+extrait, puis le vrai process applicatif) — comportement normal de
+PyInstaller onefile, pas un bug ni un double-lancement.
 
 ### Dev : dépendances, lint, tests
 
-Les dépendances de dev (ruff, pytest, pre-commit, pyinstaller) sont listées
-dans `requirements-dev.txt` à la racine — installation globale ou dans un
-venv au choix, pas de convention imposée (`pip install -r requirements-dev.txt`).
+`requirements.txt` (racine) : dépendance runtime unique, PySide6.
+`requirements-dev.txt` (racine) : ruff, pytest, pre-commit, pyinstaller.
 
 Lint (config dans le `pyproject.toml` racine, règles par défaut ruff, pas de
 `ruff format` pour ne pas reformater tout le style existant) :
@@ -79,104 +57,154 @@ ruff check .
 Un hook pre-commit (`.pre-commit-config.yaml`, installé via `pre-commit
 install`) bloque un commit si `ruff check` échoue.
 
-Tests (pytest) : chaque outil a sa propre suite dans `<dossier>/tests/`, à
-lancer **depuis le dossier de l'outil** (pas depuis la racine — voir
-ci-dessous) :
+Tests (pytest), dans `app/tests/`, à lancer **depuis `app/`** :
 
 ```
-cd steam_lister && pytest
-cd epic_mod_manager && pytest
+cd app && pytest
 ```
 
-Les tests couvrent uniquement la logique pure et locale : parsing des
-`.modinfo` (`mod_scanner.py`), `_extract_pixeldrain_id()` et
-`_extract_zip_to_folder()` côté `epic_mod_manager`, `_sanitize_folder_name()`
-et `_write_mods_zip()` côté `steam_lister`. Pas de mock du réseau Pixeldrain
-réel (pas de clé API en CI) : le flux d'upload/téléchargement n'est pas
-testé automatiquement.
-
-⚠️ `steam_lister/mod_scanner.py` et `epic_mod_manager/mod_scanner.py` (idem
-pour `gui.py`) portent le **même nom de module** dans deux dossiers
-distincts (duplication volontaire, voir plus bas). Chaque `tests/conftest.py`
-insère uniquement le dossier de son propre outil dans `sys.path` : lancer
-`pytest` à la racine du dépôt collecterait les deux suites dans le même
-process et provoquerait des collisions d'import silencieuses. Toujours
-lancer les tests dossier par dossier.
+Les tests couvrent uniquement la logique pure, sans Qt ni réseau réel :
+`mod_scanner.py` (parsing `.modinfo`, scan Workshop/Mods), `formatting.py`
+(zip/dézip, formatage taille/date, parsing lien Pixeldrain), `i18n.py`
+(traductions, repli sur clé manquante). Pas de mock du réseau Pixeldrain
+(pas de clé API en CI) : le flux d'upload/téléchargement/suppression n'est
+validé qu'à la main, avec un vrai compte.
 
 ## Architecture
 
-Les deux outils suivent la même structure à 3 couches, sans code partagé
-entre les deux dossiers (duplication volontaire, chacun reste un exécutable
-autonome) :
+```
+app/
+├── main.py                 point d'entrée (QApplication + MainWindow)
+├── main_window.py           QMainWindow : onglets Envoyer/Recevoir + bouton "Options avancées"
+├── send_tab.py               onglet Envoyer (scan Workshop, envoi par lien, partage manuel)
+├── receive_tab.py            onglet Recevoir (installation par lien, import zip local)
+├── installed_mods_dialog.py  fenêtre secondaire "Mods installés"
+├── uploads_manager.py        fenêtre "Gérer mes envois Pixeldrain" (liste/suppression)
+├── settings_dialog.py        boîte de dialogue clé API Pixeldrain
+├── link_dialog.py             boîte de dialogue affichant le lien créé
+├── progress_dialog.py         pop-up de progression réutilisable
+├── workers.py                 QThread par opération longue (voir plus bas)
+├── mod_scanner.py             scan_workshop_mods() + scan_installed_mods()
+├── steam_locator.py           détection du dossier Workshop Steam
+├── pixeldrain_client.py       upload_file() / list_files() / delete_file()
+├── config.py                  clé API + langue, stockage local
+├── formatting.py              fonctions pures : zip/dézip, formatage, parsing lien
+├── i18n.py                    dictionnaire de traductions FR/EN + détection langue
+├── tests/                     tests de logique pure uniquement
+└── Civ6ModBridge.spec         spec PyInstaller
+```
 
-- `main.py` — point d'entrée trivial, appelle `gui.main()`.
-- `gui.py` — classe `App(tk.Tk)` : toute l'UI Tkinter/ttk et les handlers de
-  boutons. Les opérations lentes (zip/dézip) tournent dans un
-  `threading.Thread` et repassent sur le thread UI via `self.after(0, ...)`
-  pour ne pas geler la fenêtre. ⚠️ Piège Python à connaître pour ce motif :
-  dans un bloc `except E as exc:`, Python supprime automatiquement `exc` à
-  la sortie du bloc. Une closure `def failed(): ...` définie *dans* le bloc
-  et planifiée via `self.after(0, failed)` capture `exc` par référence, donc
-  `exc` n'existe plus au moment où `failed()` s'exécute réellement
-  (`NameError`). Toujours capturer le message dans une variable normale
-  d'abord (`error_message = str(exc)`) avant de la fermer dans la closure —
-  corrigé aux 4 endroits concernés lors de la mise en place du lint (ruff
-  l'a détecté via F821/F841).
-- `mod_scanner.py` — lecture des `.modinfo` (XML) : extrait `title`
-  (`./Properties/Name`, en ignorant les clés de traduction brutes `LOC_...`)
-  et `version` (attribut `version` de la racine).
+### UI : onglets + menu contextuel, pas d'écran de démarrage
 
-Spécificité `steam_lister/` : `steam_locator.py` localise le dossier
-Workshop Steam de Civ VI (`steamapps/workshop/content/289070`) — priorité au
-registre Windows (`HKCU/HKLM ...\Valve\Steam`), sinon chemins par défaut
-par OS ; lit aussi `libraryfolders.vdf` pour couvrir les bibliothèques Steam
-sur plusieurs disques.
+`main_window.py` utilise un `QTabWidget` (onglets "Envoyer"/"Recevoir")
+plutôt qu'un écran de choix de rôle au démarrage — plus flexible, l'un ou
+l'autre onglet reste accessible à tout moment.
 
-Partage par lien (Pixeldrain), uniquement côté `steam_lister/` — le
-téléchargement côté `epic_mod_manager/` n'a besoin d'aucune clé :
-- `config.py` — lit/écrit la clé API Pixeldrain dans
-  `%APPDATA%/Civ6ModManager/steam_lister_config.json` (fallback
-  `Path.home()` hors Windows).
-- `pixeldrain_client.py` — `upload_file(path, api_key)` : `PUT` vers
-  `https://pixeldrain.com/api/file/` en Basic Auth (`:<api_key>` encodé en
-  base64), retourne le lien direct `https://pixeldrain.com/api/file/<id>`.
-  Lève `PixeldrainError` sur échec (401 = clé invalide, erreur réseau...).
+Deux éléments de navigation vivent volontairement à deux endroits
+différents, suite à des retours utilisateur successifs :
+- **Sélecteur de langue** (`QComboBox`) : dans le **coin de la barre
+  d'onglets** (`QTabWidget.setCornerWidget()`), car général et indépendant
+  de l'onglet actif.
+- **Bouton "Options avancées"** (`QPushButton` + `QMenu`, PAS dans la
+  barre de menu Qt classique) : positionné **sous les onglets**, car son
+  contenu est contextuel et change selon l'onglet actif
+  (`MainWindow._update_advanced_menu()`, appelée sur
+  `QTabWidget.currentChanged`). La barre de menu Qt (`self.menuBar()`) est
+  volontairement inutilisée : elle est toujours au-dessus de tout dans une
+  `QMainWindow`, ce qui ne permettait pas de la positionner sous les
+  onglets comme demandé.
 
-Côté `epic_mod_manager/gui.py`, pas de module dédié : `_extract_pixeldrain_id()`
-parse l'ID depuis un lien complet ou un ID brut (regex), et le téléchargement
-se fait par blocs (`urllib.request` + boucle `.read(1 Mo)`) vers un fichier
-temporaire avant extraction — pas de chargement de l'archive en mémoire.
+⚠️ Piège rencontré : dans `MainWindow.__init__`, `self.advanced_menu` doit
+être créé (`_update_advanced_menu` appelé une première fois) **avant** de
+connecter `tabs.currentChanged` puis d'appeler `tabs.setCurrentIndex(...)`
+avec un index non nul — sinon `setCurrentIndex` déclenche
+`_update_advanced_menu` avant que `self.advanced_menu` existe
+(`AttributeError`). C'est arrivé lors de l'implémentation du changement de
+langue à chaud en partant de l'onglet "Recevoir".
 
-### Différence structurelle entre les deux `mod_scanner.py`
+### Changement de langue à chaud (sans redémarrer l'app)
 
-Ce sont deux fichiers distincts, pas un module partagé :
-- `steam_lister/mod_scanner.py` : scanne un dossier Workshop, où **chaque
-  sous-dossier numérique = un ID Workshop** (le nom du dossier fait foi).
-- `epic_mod_manager/mod_scanner.py` : scanne un dossier Mods classique, où
-  le `.modinfo` peut être à la racine du sous-dossier du mod **ou dans un
-  sous-sous-dossier** (`child.glob("*.modinfo")` puis fallback
-  `child.glob("*/*.modinfo")`).
+`i18n.py` est un dictionnaire de traductions maison (pas de toolchain Qt
+Linguist, volontairement simple pour 2 langues). Changer de langue
+**reconstruit `MainWindow`** (`MainWindow._change_language()`) plutôt que de
+retraduire dynamiquement chaque widget existant : plus simple et sans
+risque d'oublier un widget, au prix de perdre l'état de saisie en cours
+(mods scannés, lien collé) — l'onglet actif et les dossiers sélectionnés
+sont explicitement reportés sur la nouvelle fenêtre. La nouvelle fenêtre est
+affichée **avant** de fermer l'ancienne (`quitOnLastWindowClosed` sinon
+l'appli se fermerait au moment où il n'y a temporairement plus aucune
+fenêtre visible) ; une référence module-level (`main_window._current_window`)
+évite que Python ne libère la nouvelle fenêtre par manque de référence.
 
-### Flux de partage entre les deux outils
+### `workers.py` : QThread + signaux, pas de `threading.Thread` + polling
+
+Une sous-classe `QThread` par opération longue (`CreateArchiveWorker`,
+`SendLinkWorker`, `ImportZipWorker`, `DownloadInstallWorker`,
+`RefreshUploadsWorker`, `DeleteUploadsWorker`), avec des signaux
+`progress(int, int)` / `succeeded(...)` / `failed(str)` émis depuis `run()`.
+Les signaux Qt traversent déjà le thread en toute sécurité vers le thread UI
+(pattern plus simple que le `threading.Thread` + `self.after(0, ...)` de
+l'ancienne version Tkinter). Les workers doivent être gardés en référence
+sur `self` (ex. `self._send_worker = ...`) tant qu'ils tournent, sinon
+risque de libération prématurée par Python.
+
+`SendLinkWorker` a deux phases : compression (barre déterminée, `progress`)
+puis upload (`phase_changed.emit("uploading")`, bascule en barre indéterminée
+— l'API Pixeldrain ne permet pas de mesurer la progression réelle d'un
+upload sans réécrire toute la couche réseau déjà testée avec un vrai
+compte). `DownloadInstallWorker` a le même principe : téléchargement (barre
+déterminée si `Content-Length` connu, sinon indéterminée) puis extraction.
+
+`ProgressDialog` (`progress_dialog.py`) : volontairement **pas** de blocage
+de la fermeture manuelle (bouton X, Échap). Une première version bloquait
+tout pour empêcher d'interrompre une opération en cours ; en pratique, deux
+instances de l'exe lancées en même temps (comportement normal de
+PyInstaller onefile, voir plus haut) ont fait qu'une pop-up ne recevait
+jamais son signal de fermeture, bloquant toute l'application sans
+échappatoire. Fermer la pop-up n'interrompt pas l'opération en fond ; le
+résultat s'affiche quand même via une boîte de dialogue séparée à la fin.
+
+### Modules de logique pure, réutilisés depuis l'ancienne version Tkinter
+
+- `pixeldrain_client.py` — repris à l'identique de l'ancien
+  `steam_lister/pixeldrain_client.py`, déjà testé avec un vrai compte. Deux
+  bugs déjà corrigés à ne pas réintroduire : (1) `urllib` ne suit pas les
+  redirections 307/308 sur `PUT` (seulement GET/HEAD) alors que Pixeldrain
+  redirige l'upload vers un autre serveur — suivi manuel dans
+  `upload_file()` ; (2) l'endpoint de listing est `/api/user/files` (avec le
+  préfixe `/api/`), pas `/user/files` qui renvoie la page HTML de login.
+- `mod_scanner.py` — fusionne les deux anciens `mod_scanner.py` distincts
+  (un pour le Workshop, un pour le dossier Mods) en un seul fichier avec un
+  `_parse_modinfo()` partagé (dupliqué à l'identique auparavant) :
+  - `scan_workshop_mods()` : chaque sous-dossier **numérique** du dossier
+    Workshop = un ID Workshop (nom du dossier fait foi).
+  - `scan_installed_mods()` : le `.modinfo` peut être à la racine du
+    sous-dossier du mod **ou dans un sous-sous-dossier**.
+- `formatting.py` — regroupe les fonctions pures qui vivaient mélangées
+  dans les anciens `gui.py` Tkinter (`sanitize_folder_name`,
+  `write_mods_zip`, `extract_zip_to_folder`, `extract_pixeldrain_id`,
+  `format_size`, `format_upload_date`) : logique inchangée, juste séparée
+  de la couche UI pour rester testable sans Qt.
+- `config.py` — stocke la clé API et la langue dans
+  `%APPDATA%/Civ6ModBridge/config.json` (fallback `Path.home()` hors
+  Windows). Migre automatiquement une clé API trouvée à l'ancien
+  emplacement (`%APPDATA%/Civ6ModManager/steam_lister_config.json`, utilisé
+  par l'ancienne version Tkinter) si le nouveau fichier n'existe pas encore.
+- `steam_locator.py` — inchangé depuis l'ancienne version.
+
+### Flux de partage
 
 1. **Lien Pixeldrain** *(flux recommandé, complet et automatique)* :
-   `steam_lister._send_link()` zippe les mods scannés dans un fichier
-   temporaire (`_write_mods_zip()`, partagé avec `_create_archive()`),
-   l'upload via `pixeldrain_client.upload_file()`, affiche le lien obtenu ;
-   `epic_mod_manager._download_and_install()` télécharge ce lien et appelle
-   `_extract_zip_to_folder()` (partagé avec `_import_zip()`) pour installer
-   directement dans le dossier Mods.
+   `SendLinkWorker` zippe les mods scannés (`formatting.write_mods_zip`),
+   upload (`pixeldrain_client.upload_file`), affiche le lien ;
+   `DownloadInstallWorker` télécharge ce lien et extrait
+   (`formatting.extract_zip_to_folder`) directement dans le dossier Mods.
 2. **Archive .zip locale** (fonctionnel dans les deux sens, sans réseau) :
-   `steam_lister._create_archive()` zippe chaque dossier de mod scanné sous
-   `<id>_<titre_nettoyé>/...` vers un fichier choisi par l'utilisateur ;
-   `epic_mod_manager._import_zip()` extrait une archive choisie sur le
-   disque. Utile en secours si Pixeldrain est indisponible.
-3. **Liste JSON** : `steam_lister` exporte `{id, title}` de chaque mod
-   scanné vers un `.json`, à titre d'inventaire/usage manuel — `epic_mod_manager`
-   n'a pas de bouton d'import automatique pour ce fichier (le message d'export
-   ne le prétend plus depuis la correction du texte trompeur ; si ce flux est
-   retravaillé un jour, il faudra soit ajouter cet import, soit retirer
-   complètement l'option côté `steam_lister`).
-4. **Liens presse-papiers** : `steam_lister` copie des URLs
-   `steamcommunity.com/sharedfiles/filedetails/?id=<id>` — usage manuel côté
-   Epic (pas d'automatisation dans `epic_mod_manager`).
+   `SendTab.create_archive()` zippe chaque mod scanné sous
+   `<id>_<titre_nettoyé>/...` vers un fichier choisi ;
+   `ReceiveTab.import_zip()` extrait une archive choisie sur le disque.
+3. **Liste JSON** : `SendTab.export_json()` exporte `{id, title}` de chaque
+   mod scanné, à titre d'inventaire/usage manuel — pas d'import automatique
+   correspondant côté Recevoir (le message d'export ne le prétend pas).
+4. **Liens presse-papiers** : `SendTab.copy_workshop_links()` copie des URLs
+   `steamcommunity.com/sharedfiles/filedetails/?id=<id>` — usage manuel.

@@ -1,4 +1,5 @@
-"""Tests de mod_scanner.py (parsing .modinfo, scan du dossier Mods local)."""
+"""Tests de mod_scanner.py : parsing .modinfo (partagé), scan du dossier Workshop
+(côté Envoyer) et scan du dossier Mods installés (côté Recevoir)."""
 from pathlib import Path
 
 import mod_scanner
@@ -35,6 +36,39 @@ def test_parse_modinfo_ignores_raw_translation_key(tmp_path):
 def test_parse_modinfo_missing_file_returns_none_fields(tmp_path):
     info = mod_scanner._parse_modinfo(tmp_path / "absent.modinfo")
     assert info == {"title": None, "version": None}
+
+
+# --- scan_workshop_mods (côté Envoyer / Steam) --------------------------------
+
+
+def test_scan_workshop_mods_uses_folder_name_as_id(tmp_path):
+    mod_folder = tmp_path / "2859491234"
+    _write_modinfo(mod_folder / "test.modinfo", "Un Mod Workshop", version="1.0")
+    (tmp_path / "not_a_mod_id").mkdir()  # dossier non numérique, doit être ignoré
+
+    results = mod_scanner.scan_workshop_mods(tmp_path)
+
+    assert len(results) == 1
+    mod = results[0]
+    assert mod["id"] == "2859491234"
+    assert mod["title"] == "Un Mod Workshop"
+    assert mod["version"] == "1.0"
+
+
+def test_scan_workshop_mods_falls_back_to_id_when_no_title(tmp_path):
+    mod_folder = tmp_path / "42"
+    mod_folder.mkdir()
+
+    results = mod_scanner.scan_workshop_mods(tmp_path)
+
+    assert results[0]["title"] == "42"
+
+
+def test_scan_workshop_mods_missing_folder_returns_empty_list():
+    assert mod_scanner.scan_workshop_mods(Path("does/not/exist")) == []
+
+
+# --- scan_installed_mods (côté Recevoir / Epic) -------------------------------
 
 
 def test_scan_installed_mods_finds_modinfo_at_folder_root(tmp_path):

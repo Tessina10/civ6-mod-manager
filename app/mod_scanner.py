@@ -1,18 +1,14 @@
-"""Analyse des dossiers de mods Workshop de Civilization VI."""
+"""Analyse des mods Civilization VI : dossier Workshop (Steam) ou dossier Mods installés."""
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Optional
 
 
-def _parse_modinfo(mod_folder: Path) -> Dict[str, Optional[str]]:
-    """Cherche un fichier .modinfo dans le dossier du mod et tente d'en extraire
-    le nom affiché et la version déclarée par l'auteur."""
+def _parse_modinfo(modinfo_path: Path) -> Dict[str, Optional[str]]:
+    """Extrait le nom affiché et la version déclarée par l'auteur d'un fichier .modinfo."""
     info: Dict[str, Optional[str]] = {"title": None, "version": None}
-    modinfo_files = list(mod_folder.glob("*.modinfo"))
-    if not modinfo_files:
-        return info
     try:
-        tree = ET.parse(modinfo_files[0])
+        tree = ET.parse(modinfo_path)
         root = tree.getroot()
         info["version"] = root.attrib.get("version")
         name_el = root.find("./Properties/Name")
@@ -38,7 +34,8 @@ def scan_workshop_mods(content_folder: Path) -> List[Dict]:
     for child in sorted(content_folder.iterdir()):
         if not child.is_dir() or not child.name.isdigit():
             continue
-        info = _parse_modinfo(child)
+        modinfo_files = list(child.glob("*.modinfo"))
+        info = _parse_modinfo(modinfo_files[0]) if modinfo_files else {"title": None, "version": None}
         try:
             mtime = child.stat().st_mtime
         except OSError:
@@ -49,5 +46,27 @@ def scan_workshop_mods(content_folder: Path) -> List[Dict]:
             "version": info["version"],
             "path": str(child),
             "mtime": mtime,
+        })
+    return results
+
+
+def scan_installed_mods(mods_folder: Path) -> List[Dict]:
+    """Scanne le dossier Mods et retourne, pour chaque sous-dossier contenant
+    un fichier .modinfo, son nom et sa version locale."""
+    results: List[Dict] = []
+    if not mods_folder.exists():
+        return results
+
+    for child in sorted(mods_folder.iterdir()):
+        if not child.is_dir():
+            continue
+        modinfo_files = list(child.glob("*.modinfo")) or list(child.glob("*/*.modinfo"))
+        if not modinfo_files:
+            continue
+        info = _parse_modinfo(modinfo_files[0])
+        results.append({
+            "folder": child.name,
+            "title": info["title"] or child.name,
+            "version": info["version"] or "?",
         })
     return results

@@ -1,47 +1,59 @@
 # Civ6 Mod Bridge
 
-Deux petits outils complémentaires pour partager et installer des mods
-Civilization VI entre un ami en version **Steam** et un ami en version
-**Epic Games**.
+Une application pour partager et installer des mods Civilization VI entre un
+ami en version **Steam** et un ami en version **Epic Games** (ou toute autre
+version), sans passer par un serveur — le partage se fait via un lien
+généré automatiquement (upload sur [Pixeldrain](https://pixeldrain.com)),
+avec des méthodes manuelles de secours (JSON, presse-papiers, archive `.zip`).
 
-> Anciennement "Civ 6 Mod Manager" — projet en cours de transformation pour
-> une audience plus large (fusion des deux outils, interface modernisée,
-> bilingue FR/EN). Voir `CLAUDE.md` pour l'état d'avancement.
+> Anciennement "Civ 6 Mod Manager", composé de deux outils Tkinter séparés.
+> Fusionné en une seule application PySide6, bilingue FR/EN. Voir `CLAUDE.md`
+> pour le détail de l'architecture.
 
-## [steam_lister/](steam_lister/) — "Lister mes mods Civilization VI (Steam)"
+## Utilisation
 
-À exécuter sur le PC qui a la version **Steam**. Scanne les mods souscrits
-via le Steam Workshop et permet de les envoyer automatiquement à un ami en
-version Epic Games via un simple lien (upload sur Pixeldrain), ou de zipper
-les fichiers manuellement / d'exporter une liste JSON / des liens Workshop
-à transmettre soi-même.
+L'application a deux onglets :
 
-## [epic_mod_manager/](epic_mod_manager/) — "Scanner de mods (versions installées)"
+- **Envoyer** — à utiliser sur le PC qui a la version **Steam**. Scanne les
+  mods souscrits via le Steam Workshop et permet de les envoyer
+  automatiquement à un ami via un simple lien, ou de zipper les fichiers
+  manuellement / d'exporter une liste JSON / des liens Workshop à transmettre
+  soi-même (bouton "Options avancées" sous les onglets).
+- **Recevoir** — à utiliser sur n'importe quelle installation. Colle le lien
+  reçu et clique sur "Installer les mods" pour tout télécharger et installer
+  automatiquement dans le dossier Mods ; permet aussi de voir les mods déjà
+  installés ou d'importer une archive `.zip` reçue à la main.
 
-À exécuter sur n'importe quelle installation (Epic Games ou Steam). Scanne
-le dossier Mods du jeu et affiche le nom et la version locale de chaque mod
-déjà installé, en lisant son fichier `.modinfo`. Permet de coller le lien
-reçu de `steam_lister` pour télécharger et installer les mods
-automatiquement, ou d'importer directement une archive `.zip` reçue à la
-main.
+La langue (français/anglais) se change à tout moment via le sélecteur dans le
+coin des onglets, sans redémarrer l'application.
 
-Note : le téléchargement automatique via SteamCMD a été abandonné — le
-Workshop de Civilization VI nécessite une clé de déchiffrement liée à un
-compte Steam possédant réellement le jeu, ce qui rend le login anonyme
-inutilisable pour ce jeu.
+### Configurer l'envoi par lien (Pixeldrain)
 
-Voir le README de chaque dossier pour les instructions détaillées.
+1. Crée un compte gratuit sur https://pixeldrain.com (bouton "Register").
+2. Une fois connecté, va sur https://pixeldrain.com/user/api_keys et génère
+   une clé API.
+3. Dans l'onglet "Envoyer", ouvre "Options avancées" → "Pixeldrain" → "Clé
+   API...", colle la clé, "Enregistrer". Elle est stockée localement et
+   n'est utile que pour l'envoi — la personne qui reçoit n'a besoin d'aucun
+   compte.
+4. Les fichiers envoyés sont conservés 60 jours (délai prolongé à chaque
+   téléchargement), jusqu'à 20 Go par fichier en version gratuite. Le menu
+   "Options avancées" → "Pixeldrain" → "Gérer mes envois..." permet de
+   lister/supprimer les fichiers déjà envoyés sur le compte.
+
+Note : le téléchargement automatique via SteamCMD a été envisagé puis
+abandonné — le Workshop de Civilization VI nécessite une clé de
+déchiffrement liée à un compte Steam possédant réellement le jeu, ce qui
+rend le login anonyme inutilisable pour ce jeu.
 
 ## Développement
 
-Aucune dépendance runtime (stdlib Python uniquement). Les dépendances de dev
-(lint, tests, build) sont listées dans `requirements-dev.txt` :
-
 ```
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
+cd app && python main.py              # lancer l'application
+cd app && pytest                      # tests (logique pure uniquement)
 ruff check .                          # lint
-cd steam_lister && pytest             # tests de steam_lister
-cd epic_mod_manager && pytest         # tests de epic_mod_manager
+cd app && pyinstaller Civ6ModBridge.spec  # build de l'exécutable Windows
 ```
 
 Voir `CLAUDE.md` pour le détail de l'architecture et des conventions.
